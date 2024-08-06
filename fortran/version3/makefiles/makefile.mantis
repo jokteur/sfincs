@@ -1,0 +1,38 @@
+# -*- mode: makefile -*-
+#
+# This makefile is used for a computer running a flavor of ubuntu 16.04,
+# with 1 to a few processors, and with no job management system. 
+
+# These next 2 includes set FC, FLINKER, and PETSC_LIB:
+#
+# If both petsc-real and petsc-complex are installed, you may need uncomment
+# and modify the next line in order to use the correct petsc.
+include ${PETSC_DIR}/lib/petsc/conf/variables
+include ${PETSC_DIR}/lib/petsc/conf/rules
+FLINKER = mpif90
+
+# The variable LIBSTELL_DIR should either be "mini_libstell", if you use this reduced version of libstell                                              
+# that comes packaged with SFINCS, or else it should point to a directory containing libstell .mod files
+# elsewhere on your system.
+LIBSTELL_DIR=mini_libstell
+
+# The variable LIBSTELL_FOR_SFINCS should either be "mini_libstell/mini_libstell.a", if you use this reduced version of libstell
+# that comes packaged with SFINCS, or else it should point to a libstell.a library elsewhere on your system.
+LIBSTELL_FOR_SFINCS=mini_libstell/mini_libstell.a
+
+# Any other flags for compiling, such as -I include flags:
+EXTRA_COMPILE_FLAGS = -I${PETSC_DIR}/include -I${NETCDFF}/include -I${HDF5_DIR}/include -ffree-line-length-none -fallow-argument-mismatch
+
+# Any other flags for linking, such as -l library flags:
+EXTRA_LINK_FLAGS = -L${NETCDF}/lib -L${NETCDFF}/lib -lnetcdff -lnetcdf
+
+# The next parameters are used only for running and testing selected examples using "make test".
+
+# For "make test", are runs submitted using a batch system (such as PBS)?  
+# The value of this variable must be "yes" or "no".
+SFINCS_IS_A_BATCH_SYSTEM_USED=no
+
+# This next line matters only if a batch system is used:
+SFINCS_COMMAND_TO_SUBMIT_JOB=
+
+SFINCS_SYSTEM=laptop
