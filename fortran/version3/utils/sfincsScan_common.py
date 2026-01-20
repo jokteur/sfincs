@@ -1,24 +1,104 @@
 #!/usr/bin/env python
 
+import os
+import math
+import string
 import time
-
-start_time_common = time.time()
 
 # This python file contains several subroutines that are used both in launching and processing parameter scans in sfincs.
 
-inputFilename = "input.namelist"
-outputFilename = "sfincsOutput.h5"
+INPUT_FILENAME = "input.namelist"
+OUTPUT_FILENAME = "sfincsOutput.h5"
+DEFAULT_VARIABLES_FILENAME = "globalVariables.F90" 
+COMMENT_CODE = "!ss"
 
-defaultVariablesFilename = "globalVariables.F90" 
+def uniq(seq): 
+   checked = []
+   for e in seq:
+       if e not in checked:
+           checked.append(e)
+   return checked
 
-# Code preceding instructions for sfincsScan in the input.namelist file:
-commentCode = "!ss"
+def logspace(min,max,nn):
+    if nn < 1:
+        return []
+    elif nn==1:
+        return [min]
 
-import string
+    if min <= 0:
+        print ("Error in logspace! min must be positive.")
+        exit(1)
+    if max <= 0:
+        print ("Error in logspace! max must be positive.")
+        exit(1)
+    return [math.exp(x/(nn-1.0)*(math.log(max)-math.log(min))+math.log(min)) for x in range(nn)]
 
-def readScanVariable(varName, intOrFloatOrString, required=True, stringValueCaseSensitive=False):
+def linspace(min,max,nn):
+    if nn < 1:
+        return []
+    elif nn==1:
+        return [min]
+    return [x/(nn-1.0)*(max-min)+min for x in range(nn)]
+
+def logspace_int(min,max,nn):
+    return uniq(list(map(int,map(round,logspace(min,max,nn)))))
+
+def logspace_odd(min,max,nn):
+    temp = list(map(int,logspace(min,max,nn)))
+    temp2 = []
+    for x in temp:
+        if (x % 2 == 0):
+            temp2.append(x+1)
+        else:
+            temp2.append(x)
+    return uniq(temp2)
+
+def namelistLineContains(line,varName):
+    line2 = line.strip().lower()
+    varName = varName.lower()
+    # We need enough characters for the varName, =, and value: 
+    if len(line2)<len(varName)+2:
+        return False
+
+    if line2[0]=="!":
+        return False
+
+    nextChar = line2[len(varName)]
+    if line2[:len(varName)]==varName and (nextChar==" " or nextChar=="="):
+        return True
+    else:
+        return False
+
+def namelistLineContainsSS(line,varName):
+    # Same as namelistLineContains, but looking for !ss directives.
+    line2 = line.strip().lower()
+    varName = varName.lower()
+    if len(line2)<len(COMMENT_CODE):
+        return False
+
+    if line2[:len(COMMENT_CODE)] != COMMENT_CODE:
+        return False
+
+    # If we got this far, the line must begin with !ss, so strip this part out.
+    line2 = line2[len(COMMENT_CODE):].strip()
+
+    # We need enough characters for the varName, =, and value: 
+    if len(line2)<len(varName)+2:
+        return False
+
+    if line2[0]=="!":
+        return False
+
+    nextChar = line2[len(varName)]
+    if line2[:len(varName)]==varName and (nextChar==" " or nextChar=="="):
+        return True
+    else:
+        return False
+
+def readScanVariable(inputFile, varName, intOrFloatOrString, required=True, stringValueCaseSensitive=False, inputFilename=INPUT_FILENAME):
     # This subroutine reads the special scan commands in the input.namelist that are hidden from fortran:
-    # It is assumed that the input.namelist file has been loaded into the variable "inputFile".
+    # inputFilename is passed mainly for error messages.
+    # inputFile is a list of strings (lines)
 
     if (intOrFloatOrString != "int") and (intOrFloatOrString != "float") and (intOrFloatOrString != "string"):
         print ("intOrFloatOrString must be int, float, or string.")
@@ -35,13 +115,13 @@ def readScanVariable(varName, intOrFloatOrString, required=True, stringValueCase
             line2 = line.strip()
 
         # We need enough characters for the comment code, varName, =, and value:        
-        if len(line2)<len(commentCode)+3:
+        if len(line2)<len(COMMENT_CODE)+3:
             continue
 
-        if not line2[:len(commentCode)]==commentCode:
+        if not line2[:len(COMMENT_CODE)]==COMMENT_CODE:
             continue
 
-        line3 = line2[len(commentCode):].strip()
+        line3 = line2[len(COMMENT_CODE):].strip()
 
         if len(line3) < len(varName)+2:
             continue
@@ -63,9 +143,9 @@ def readScanVariable(varName, intOrFloatOrString, required=True, stringValueCase
         # Remove any comments:
         if "!" in line5:
             try:
-                line5 = line5[:string.find(line5,"!")] #python2
+                line5 = line5[:line5.find("!")]
             except:
-                line5 = line5[:line5.find("!")] #python3
+                pass
         line5 = line5.strip();
 
         if intOrFloatOrString=="int":
@@ -92,15 +172,12 @@ def readScanVariable(varName, intOrFloatOrString, required=True, stringValueCase
         print ("Error! Unable to find a valid setting for the scan variable "+originalVarName+" in "+inputFilename+".")
         print ("A definition should have the following form:")
         if intOrFloatOrString == "int":
-            print (commentCode+" "+originalVarName+" = 1")
+            print (COMMENT_CODE+" "+originalVarName+" = 1")
         elif intOrFloatOrString == "float":
-            print (commentCode+" "+originalVarName+" = 1.5")
+            print (COMMENT_CODE+" "+originalVarName+" = 1.5")
         elif intOrFloatOrString == "string":
-            print (commentCode+" "+originalVarName+" = nuPrime")
+            print (COMMENT_CODE+" "+originalVarName+" = nuPrime")
         exit(1)
-        #else: 
-        #    # Exit without printing an error message.
-        #    raise
 
     if numValidLines > 1:
         print ("Warning! More than 1 valid definition was found for the variable "+originalVarName+". The last one will be used.")
@@ -109,9 +186,9 @@ def readScanVariable(varName, intOrFloatOrString, required=True, stringValueCase
     return returnValue
 
 
-def readVariable(varName, intOrFloatOrString, required=True):
+def readVariable(inputFile, varName, intOrFloatOrString, required=True, inputFilename=INPUT_FILENAME):
     # This function reads normal fortran variables from the input.namelist file.
-    # It is assumed that the input.namelist file has been loaded into the variable "inputFile".
+    # inputFile is list of strings
 
     if (intOrFloatOrString != "int") and (intOrFloatOrString != "float") and (intOrFloatOrString != "string"):
         print ("intOrFloatOrString must be int, float, or string.")
@@ -149,10 +226,10 @@ def readVariable(varName, intOrFloatOrString, required=True):
         # Remove any comments:
         if "!" in line5:
             try:
-                line5 = line5[:string.find(line5,"!")] #python2
-            except:
-                line5 = line5[:line5.find("!")] #python3
+                line5 = line5[:line5.find("!")]
                 line5 = line5.strip()
+            except:
+                pass
 
         if intOrFloatOrString=="int":
             try:
@@ -185,8 +262,6 @@ def readVariable(varName, intOrFloatOrString, required=True):
     return returnValue
 
 
-
-
 def readDefault(varName, intOrFloatOrString, required=True):
     # This function reads the default value of fortran variables defined in globalVariables.F90.
     # If found it returns the last occurence of the variable, otherwise None.
@@ -203,10 +278,10 @@ def readDefault(varName, intOrFloatOrString, required=True):
     try: 
         working_dir = os.getcwd() ##Store current working directory
         os.chdir(os.path.dirname(os.path.abspath(__file__))) ##Go to directory of this file
-        defaultVariablesFile = open('../' + defaultVariablesFilename, 'r') ##Open file
+        defaultVariablesFile = open(os.path.join('../', DEFAULT_VARIABLES_FILENAME), 'r') ##Open file
         os.chdir(working_dir) ##Go back to working directory
     except:
-        print ("Error! Unable to open "+defaultVariablesFilename+".")
+        print ("Error! Unable to open "+DEFAULT_VARIABLES_FILENAME+".")
         if required:
             raise
         else:
@@ -224,9 +299,6 @@ def readDefault(varName, intOrFloatOrString, required=True):
 
         if len(line3) < len(varName)+2:
             continue
-
-        #if not line3[:len(varName)].lower()==varName.lower():
-        #    continue
 
         begin_index = line3.lower().find(varName.lower())
         
@@ -259,18 +331,16 @@ def readDefault(varName, intOrFloatOrString, required=True):
         # Remove any comments:                                                                                                                      
         if "!" in line5:
             try:
-                line5 = line5[:string.find(line5,"!")] #python2
+                line5 = line5[:line5.find("!")]
             except:
-                line5 = line5[:line5.find("!")] #python3
+                pass
            
-
         if intOrFloatOrString=="int":
             try:
                 returnValue = int(line5)
                 numValidLines += 1
             except:
-                print ("Warning! I found a definition for the variable "+originalVarName+" in "+defaultVariablesFilename+" but I was unable to parse the line to get\
- an integer.")
+                print ("Warning! I found a definition for the variable "+originalVarName+" in "+DEFAULT_VARIABLES_FILENAME+" but I was unable to parse the line to get an integer.")
                 print ("Here is the line in question:")
                 print (line)
         elif intOrFloatOrString=="float":
@@ -278,8 +348,7 @@ def readDefault(varName, intOrFloatOrString, required=True):
                 returnValue = float(line5)
                 numValidLines += 1
             except:
-                print ("Warning! I found a definition for the variable "+originalVarName+" in "+defaultVariablesFilename+" but I was unable to parse the line to get\
- a float.")
+                print ("Warning! I found a definition for the variable "+originalVarName+" in "+DEFAULT_VARIABLES_FILENAME+" but I was unable to parse the line to get a float.")
                 print ("Here is the line in question:")
                 print (line)
         elif intOrFloatOrString=="string":
@@ -287,7 +356,7 @@ def readDefault(varName, intOrFloatOrString, required=True):
             numValidLines += 1
 
     if required and returnValue==None:
-        print ("Error! Unable to find a valid setting for the variable "+originalVarName+" in "+defaultVariablesFilename+".")
+        print ("Error! Unable to find a valid setting for the variable "+originalVarName+" in "+DEFAULT_VARIABLES_FILENAME+".")
         exit(1)
 
     if numValidLines > 1:
@@ -295,5 +364,3 @@ def readDefault(varName, intOrFloatOrString, required=True):
 
     print ("Read "+originalVarName+" = "+str(returnValue))
     return returnValue
-
-print ("Time to run sfincsScan_common: ", time.time() - start_time_common)
