@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import time
+import os
 
 start_time_common = time.time()
 
@@ -16,7 +17,7 @@ commentCode = "!ss"
 
 import string
 
-def readScanVariable(varName, intOrFloatOrString, required=True, stringValueCaseSensitive=False):
+def readScanVariable(varName, intOrFloatOrString, inputFile, required=True, stringValueCaseSensitive=False):
     # This subroutine reads the special scan commands in the input.namelist that are hidden from fortran:
     # It is assumed that the input.namelist file has been loaded into the variable "inputFile".
 
@@ -109,7 +110,7 @@ def readScanVariable(varName, intOrFloatOrString, required=True, stringValueCase
     return returnValue
 
 
-def readVariable(varName, intOrFloatOrString, required=True):
+def readVariable(varName, intOrFloatOrString, inputFile, required=True):
     # This function reads normal fortran variables from the input.namelist file.
     # It is assumed that the input.namelist file has been loaded into the variable "inputFile".
 

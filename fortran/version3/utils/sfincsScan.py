@@ -6,12 +6,13 @@
 
 import os, inspect, math, subprocess
 from sys import argv
+import common
 
 print ("This is "+ inspect.getfile(inspect.currentframe()))
 
-filename = "input.namelist"
-jobFilename = "job.sfincsScan"
-commentCode = "!ss"
+common.filename = "input.namelist"
+common.jobFilename = "job.sfincsScan"
+common.commentCode = "!ss"
 
 try:
     sfincsSystem = os.environ["SFINCS_SYSTEM"]
@@ -26,21 +27,21 @@ if len(argv)>1:
 else:
     waitBeforeSubmitting = True
 
-if not os.path.isfile(filename):
-    print ("Error! The file "+filename+" must be present in the directory from which you call sfincsScan.")
+if not os.path.isfile(common.filename):
+    print ("Error! The file "+common.filename+" must be present in the directory from which you call sfincsScan.")
     exit(1)
 
 # For each system, 
 if sfincsSystem in ["raven", "viper", "eddy", "stellar", "perlmutter", "marconi"]:
-    submitCommand = "sbatch "+jobFilename
+    submitCommand = "sbatch "+common.jobFilename
     def nameJobFile(original,name):
         # Modify the job.sfincsScan file to change the name that appears in the queue.
         # Insert the new line after the original first line, since the first line is a shebang.
         original.insert(1,"#SBATCH -J "+name+"\n")
         return original
 
-elif sfincsSystem=="laptop" or sfincsSystem=="macports" or sfincsSystem=='ubuntu16.04':
-    submitCommand = "bash "+jobFilename
+elif sfincsSystem=="laptop" or sfincsSystem=="macports" or sfincsSystem=='ubuntu16.04' or sfincsSystem=='opensuse':
+    submitCommand = "bash "+common.jobFilename
     def nameJobFile(original,name):
         # No changes needed to the job.sfincsScan file.
         return original
@@ -63,13 +64,13 @@ else:
 # Any checks that should be done for other systems can go here.
 
 #if jobfileRequired:
-if not os.path.isfile(jobFilename):
-    print ("Error! A "+jobFilename+" file must be present in the directory from which you call sfincsScan (even for systems with no queue).")
+if not os.path.isfile(common.jobFilename):
+    print ("Error! A "+common.jobFilename+" file must be present in the directory from which you call sfincsScan (even for systems with no queue).")
     print ("Examples are available in /fortran/version3/utils/job.sfincsScan.xxx")
     exit(1)
 
 # Load the input file:
-with open(filename, 'r') as f:
+with open(common.filename, 'r') as f:
     inputFile = f.readlines()
 
 # Next come some functions used in convergence scans which might be useful for other types of scans:
@@ -115,65 +116,30 @@ def logspace_odd(min,max,nn):
             temp2.append(x)
     return uniq(temp2)
 
-def namelistLineContains(line,varName):
-    line2 = line.strip().lower()
-    varName = varName.lower()
-    # We need enough characters for the varName, =, and value: 
-    if len(line2)<len(varName)+2:
-        return False
 
-    if line2[0]=="!":
-        return False
-
-    nextChar = line2[len(varName)]
-    if line2[:len(varName)]==varName and (nextChar==" " or nextChar=="="):
-        return True
-    else:
-        return False
-
-def namelistLineContainsSS(line,varName):
-    # Same as namelistLineContains, but looking for !ss directives.
-    line2 = line.strip().lower()
-    varName = varName.lower()
-    if len(line2)<len(commentCode):
-        return False
-
-    if line2[:len(commentCode)] != commentCode:
-        return False
-
-    # If we got this far, the line must begin with !ss, so strip this part out.
-    line2 = line2[len(commentCode):].strip()
-
-    # We need enough characters for the varName, =, and value: 
-    if len(line2)<len(varName)+2:
-        return False
-
-    if line2[0]=="!":
-        return False
-
-    nextChar = line2[len(varName)]
-    if line2[:len(varName)]==varName and (nextChar==" " or nextChar=="="):
-        return True
-    else:
-        return False
 
 # Load some other required subroutines:
 #execfile(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))+"/sfincsScan_common")
-exec(open(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))+"/sfincsScan_common").read())
+from sfincsScan_common import *
 
-scanType = readScanVariable("scanType","int")
+scanType = readScanVariable("scanType","int", inputFile)
 
-scriptName =  os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))+"/sfincsScan_"+str(scanType) 
-
-if not os.path.isfile(scriptName):
-    print ("Error! The file "+scriptName+" does not exist, meaning that plots for scanType = "+str(scanType)+ " are not yet supported.")
-    exit(1)
-
-try:
-    #execfile(scriptName)
-    exec(open(scriptName).read())
-except IOError:
-    print ("Unable to run "+scriptName+" even though the file exists.")
-    raise
+if scanType == 1:
+    import sfincsScan_1
+elif scanType == 2:
+    import sfincsScan_2
+elif scanType == 3:
+    import sfincsScan_3
+elif scanType == 4:
+    from sfincsScan_4 import make_scan
+    make_scan(waitBeforeSubmitting, inputFile, nameJobFile, submitCommand)
+elif scanType == 5:
+    from sfincsScan_5 import make_scan
+    make_scan(waitBeforeSubmitting, inputFile)
+    
+elif scanType == 21:
+    import sfincsScan_21
+elif scanType == 22:
+    import sfincsScan_22
 
 print ("Good bye!")

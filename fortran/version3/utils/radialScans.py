@@ -16,12 +16,15 @@ profilesFilename = 'profiles'
 
 import os, inspect
 import numpy
+import numpy as np
 from scipy import interpolate
 from scipy.io import netcdf_file
 import matplotlib.pyplot as plt
 import matplotlib
 import sys
 from math import pi, sqrt
+from sfincsScan_common import *
+import common
 
 this_filename = "radialScans"
 
@@ -136,7 +139,7 @@ def roundRadii(radii,available_psiN):
     return radii
         
 
-geometryScheme = readVariable("geometryScheme","int")
+geometryScheme = readVariable("geometryScheme","int", inputFile)
 if geometryScheme==5 or geometryScheme==11 or geometryScheme==12:
     pass
 else:
@@ -188,7 +191,7 @@ elif inputRadialCoordinate==3 and radius_max > 1:
     exit(1)
 
 # First set up a simple uniformly spaced grid.  We may shift these points later.
-radii = linspace(radius_min, radius_max, Nradius)
+radii = np.linspace(radius_min, radius_max, Nradius)
 
 # Next, load the magnetic equilibrium.
 # We at least need to determine aHat and psiHat, since these two quantities are
@@ -293,7 +296,7 @@ directories = [radiusName+"_"+"{:.4g}".format(radius) for radius in radii]
 # But for a scan over Er at each radius, we do want to revisit every radius.
 # To make this switch possible, the variable 'skipExistingDirectories' should be set in whichever
 # sfincsScan_N script call this script.
-if skipExistingDirectories:
+if common.skipExistingDirectories:
     radii_copy = list(radii)
     directories_copy = list(directories)
 
@@ -350,7 +353,7 @@ def convertGradients():
         dnHatdradii_fine.append(thisSpecies_dnHatdradii_fine)
         dTHatdradii_fine.append(thisSpecies_dTHatdradii_fine)
 
-def plotProposedProfiles():
+def plotProposedProfiles(waitBeforeSubmitting: bool):
     # Plot the input profiles and their derivatives.
     # All the arrays dnHatdradii, dnHatdradii_fine, etc should be populated before this function is called.
     if not waitBeforeSubmitting:
@@ -365,8 +368,8 @@ def plotProposedProfiles():
         numQuantities = 2*(2*Nspecies+2)+2
     else:
         numQuantities = 6
-    numCols = math.ceil(math.sqrt(numQuantities*1.0))
-    numRows = math.ceil(numQuantities*1.0/numCols)
+    numCols = np.ceil(np.sqrt(numQuantities*1.0))
+    numRows = np.ceil(numQuantities*1.0/numCols)
     plotNum = 1
 
     if profilesScheme==1:
