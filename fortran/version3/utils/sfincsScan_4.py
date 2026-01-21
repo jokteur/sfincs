@@ -86,6 +86,10 @@ def run(context):
             exit(0)
     
     print ("launching jobs...")
+
+    equilibriumFile = readVariable("equilibriumFile","string")
+    if equilibriumFile:
+        equilibriumFile = equilibriumFile[1:-1]  # Remove quotes
     
     # Read in the job.sfincsScan file:
     with open(jobFilename, 'r') as f:
@@ -123,6 +127,9 @@ def run(context):
             if namelistLineContains(line,radiusName+"_wish"):
     ##            line = "  "+radiusName+"_wish = "+str(radii[runNum])+" ! Set by sfincsScan_4.\n"
                 continue
+
+            if namelistLineContains(line, "equilibriumFile"):
+                continue
     
             if namelistLineContains(line,"nHats"):
     ##            line = "  nHats =" 
@@ -158,6 +165,7 @@ def run(context):
             if line.strip().find("&geometryParameters") == 0 :
     #            f.write("  "+radiusName+"_wish = "+str(radii[runNum])+" ! Set by sfincsScan_4.\n")
                 line += "  "+radiusName+"_wish = "+str(radii[runNum])+" ! Set by sfincsScan_4.\n"
+                line += "  equilibriumFile = '"+os.path.join("..", equilibriumFile)+"' ! Set by sfincsScan_4.\n"
     
     #        if namelistLineContains(line,"&speciesParameters") :
             if line.strip().find("&speciesParameters") == 0 :

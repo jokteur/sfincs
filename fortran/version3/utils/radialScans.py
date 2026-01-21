@@ -236,8 +236,8 @@ def run(context):
     # We may also need to know the surfaces on which the magnetic equilibrium information
     # is available.
     
-    equilibriumFile = readVariable("equilibriumFile","string")
-    equilibriumFile = equilibriumFile[1:-1]
+    equilibriumFileRaw = readVariable("equilibriumFile","string")
+    equilibriumFile = equilibriumFileRaw[1:-1]
     
     if geometryScheme==11 or geometryScheme==12:
         # Parse Joachim Geiger's .bc file format to determine psiAHat, aHat, and the available psiN.
