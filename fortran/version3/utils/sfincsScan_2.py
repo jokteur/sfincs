@@ -51,7 +51,7 @@ def run(context):
     
     inputRadialCoordinateForGradients = readVariable("inputRadialCoordinateForGradients","int", False)
     if inputRadialCoordinateForGradients == None :
-        inputRadialCoordinateForGradients = readDefault("inputRadialCoordinateForGradients","int")
+        inputRadialCoordinateForGradients = sfincsScan_common.readDefault("inputRadialCoordinateForGradients","int")
     
     NErs = readScanVariable("NErs","int")
     if inputRadialCoordinateForGradients==0:
@@ -106,6 +106,10 @@ def run(context):
             exit(0)
     
     print ("launching jobs...")
+
+    equilibriumFile = readVariable("equilibriumFile","string")
+    if equilibriumFile:
+        equilibriumFile = equilibriumFile[1:-1]  # Remove quotes
     
     # Read in the job.sfincsScan file:
     with open(jobFilename, 'r') as f:
@@ -140,14 +144,20 @@ def run(context):
     
         #################################################
     
-        f = open(filename,"w")
+        f = open(inputFilename,"w")
         for line in inputFile:
             if namelistLineContains(line,varName):
     ##            line = "  "+varName+" = "+str(Ers[runNum])+" ! Set by sfincsScan_2.\n" 
                 continue
+            if namelistLineContains(line, "equilibriumFile"):
+                continue
     
             if line.strip().find("&physicsParameters") == 0 :
                 line += "  "+varName+" = "+str(generalErs[runNum])+" ! Set by sfincsScan_2.\n"
+
+            if line.strip().find("&geometryParameters") == 0 :
+    #            f.write("  "+radiusName+"_wish = "+str(radii[runNum])+" ! Set by sfincsScan_4.\n")
+                line += "  equilibriumFile = '"+os.path.join("../..", equilibriumFile)+"' ! Set by sfincsScan_4.\n"
     
             f.write(line)
         f.close()
