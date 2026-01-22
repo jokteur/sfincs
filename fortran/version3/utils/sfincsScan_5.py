@@ -199,7 +199,7 @@ def run(context):
         # Submit the Er scan:
     ##    submitCommand = "sfincsScan -f" 
         #submitCommand = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))+"/sfincsScan -f"
-        submitCommand = os.path.dirname(os.path.abspath(__file__))+"/sfincsScan -f"
+        submitCommand = "python " + os.path.dirname(os.path.abspath(__file__))+"/sfincsScan.py -f"
         #############################
         try:
             # We need to include .split(" ") to separate the command-line arguments into an array of strings.   

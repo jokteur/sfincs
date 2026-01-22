@@ -214,6 +214,7 @@ def run(context):
         try:
             # We need to include .split(" ") to separate the command-line arguments into an array of strings.   
             # I'm not sure why python requires this. 
+            print(submitCommand)
             submissionResult = subprocess.call(submitCommand.split(" "))
             #submissionResult=0
         except:
